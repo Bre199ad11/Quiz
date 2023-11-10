@@ -9,14 +9,17 @@ import time
 
 bot = telebot.TeleBot('6581012402:AAEoFDiSXeAJ1Es1heqqEESd-gLgpnTt4EM')
 
+#путь к репозиторию на гитхабе к файлу с вопросами
+url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions.csv'
+
 #путь к файлу с вопросами
-path_to_quetions='D:/nur_bot/who_are_you_without_your_bot/Questions.csv'
+#path_to_quetions='D:/nur_bot/who_are_you_without_your_bot/Questions.csv'
 
 #путь к ответам на вопросы (статистике)
 path_to_statistic='D:/nur_bot/who_are_you_without_your_bot/data.csv'
 
 
-df = pd.read_csv(path_to_quetions)
+df = pd.read_csv(url)
 
 #массив с вопросами и ответами из файла
 questions = {
