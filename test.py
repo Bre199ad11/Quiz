@@ -9,9 +9,16 @@ import time
 
 bot = telebot.TeleBot('6581012402:AAEoFDiSXeAJ1Es1heqqEESd-gLgpnTt4EM')
 
-df = pd.read_csv('D:/nur_bot/who_are_you_without_your_bot/Questions.csv')
+#путь к файлу с вопросами
+path_to_quetions='D:/nur_bot/who_are_you_without_your_bot/Questions.csv'
+
+#путь к ответам на вопросы (статистике)
+path_to_statistic='D:/nur_bot/who_are_you_without_your_bot/data.csv'
 
 
+df = pd.read_csv(path_to_quetions)
+
+#массив с вопросами и ответами из файла
 questions = {
     "question": df.question,
     "answer": [df.answer1, df.answer2, df.answer3, df.answer4],
@@ -34,6 +41,7 @@ def start(message):
 
 def ok(message):
     if (message.text=="OK"):
+        questions["index_answer"]=0
         post=get_question_message(questions["index_answer"])
         bot.send_message(message.chat.id, post["text"],reply_markup=post["keyboard"])
 
@@ -41,18 +49,18 @@ def ok(message):
 def get_question_message(index_answer):
     keyboard=types.InlineKeyboardMarkup()
     for num,answer in enumerate(questions["answer"][index_answer]):
-        keyboard.row(types.InlineKeyboardButton(f"{chr(num + 97)}) {answer}", callback_data=f"?ans&{num}"))
+         keyboard.row(types.InlineKeyboardButton(f"{chr(num + 97)}) {answer}", callback_data=f"?ans&{num}"))
     text=f"Вопрос №{index_answer + 1}\n{questions['question'][index_answer]}\n"
-
     return{
         "text": text,
-        "keyboard": keyboard,
+           "keyboard": keyboard,
     }
+
 
 
 @bot.callback_query_handler(func=lambda query: query.data.startswith("?ans"))
 def answered(query):
-    if (questions["index_answer"]==questions["count"]-1):
+    if (questions["index_answer"]==questions["count"]):
         bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
 						 reply_markup=None)
         questions["index_answer"]=0
@@ -60,7 +68,8 @@ def answered(query):
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(telebot.types.InlineKeyboardButton("Следующий вопрос", callback_data="?next"))
         user_answer=questions["answer"][questions["index_answer"]][int(query.data.split("&")[1])]
-        statistics_write(query.message.chat.id, user_answer, questions["index_answer"])
+        number_user_answer=int(query.data.split("&")[1])
+        statistics_write(query.message.chat.id, user_answer, questions["index_answer"], number_user_answer, query.message.chat.username)
         questions["index_answer"]+=1
         bot.edit_message_text(text='Ответ записан ✅', chat_id=query.message.chat.id, message_id=query.message.id,
 						 reply_markup=keyboard)
@@ -69,27 +78,35 @@ def answered(query):
 
 @bot.callback_query_handler(func=lambda query: query.data == "?next")
 def next(query):
-    post=get_question_message(questions["index_answer"])
-    bot.edit_message_text(post["text"], query.message.chat.id, query.message.id, reply_markup=post["keyboard"])
+    if (questions["index_answer"]!=questions["count"]):
+        post=get_question_message(questions["index_answer"])
+        bot.edit_message_text(post["text"], query.message.chat.id, query.message.id, reply_markup=post["keyboard"])
+    else:
+        bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
+						 reply_markup=None)
+        questions["index_answer"]=0
 
 
 
-def statistics_write(user_id, answer, index_answer):
+def statistics_write(user_id, answer, index_answer, number_answer, username):
     data = datetime.datetime.today().strftime("%Y-%m-%d-%H-%M")
-    statistics={'user_id': [user_id],
+    statistics={'data': [data],
+                'user_id': [user_id],
+                'username': [username],
                 'question': [questions["question"][index_answer]],
                 'number_of_question': [index_answer],
-                'answer': [answer]}
+                'answer': [answer],
+                'answer_index': number_answer}
     
     df = pd.DataFrame(statistics)
 
     print(df)
 
     #df.to_csv('D:/nur_bot/who_are_you_without_your_bot/data.csv', index = False) 
-    old_df = pd.read_csv('D:/nur_bot/who_are_you_without_your_bot/data.csv')
+    old_df = pd.read_csv(path_to_statistic)
 
     result=pd.concat([old_df,df])
-    result.to_csv('D:/nur_bot/who_are_you_without_your_bot/data.csv', index = False) 
+    result.to_csv(path_to_statistic, index = False) 
 
     """with open('data.csv', 'a', newline="", encoding='UTF-8') as fil:
         wr = csv.writer(fil, delimiter=',')
