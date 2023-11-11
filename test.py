@@ -10,16 +10,19 @@ import time
 bot = telebot.TeleBot('6581012402:AAEoFDiSXeAJ1Es1heqqEESd-gLgpnTt4EM')
 
 #путь к репозиторию на гитхабе к файлу с вопросами
-url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions.csv'
+_url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions.csv'
 
 #путь к файлу с вопросами
-#path_to_quetions='D:/nur_bot/who_are_you_without_your_bot/Questions.csv'
+path_to_quetions='D:/nur_bot/who_are_you_without_your_bot/Questions.csv'
 
 #путь к ответам на вопросы (статистике)
 path_to_statistic='D:/nur_bot/who_are_you_without_your_bot/data.csv'
 
+#path to file with info about passed user
+path_to_passed_user='D:/nur_bot/who_are_you_without_your_bot/user_is_passed.csv'
 
-df = pd.read_csv(url)
+df = pd.read_csv(_url)
+passed_df=pd.read_csv(path_to_passed_user)
 
 #массив с вопросами и ответами из файла
 questions = {
@@ -28,6 +31,15 @@ questions = {
     "count": len(df.question),
     "index_answer": 0
 }
+
+#mass whth info about passed user
+passed_user={
+    "user_id": passed_df.user_id,
+    "is_passed": passed_df.is_passed
+}
+
+#id Дениса
+den_id=123704982
 
 
 @bot.message_handler(commands=["start"])
@@ -42,12 +54,72 @@ def start(message):
 
 @bot.message_handler(content_types=['text'])
 
-def ok(message):
+def message(message):
     if (message.text=="OK"):
-        questions["index_answer"]=0
-        post=get_question_message(questions["index_answer"])
-        bot.send_message(message.chat.id, post["text"],reply_markup=post["keyboard"])
+        str=check_passed(message.chat.id)
+        if (str=={'is_passed'}):
+            bot.send_message(message.chat.id, text="Вы уже прошли этот опрос",reply_markup=None)
+        else:
+            questions["index_answer"]=0
+            post=get_question_message(questions["index_answer"])
+            bot.send_message(message.chat.id, post["text"],reply_markup=post["keyboard"])
 
+    #root rights
+    elif (message.text=="root" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=root_keyboard()
+        bot.send_message(message.chat.id, text="ROOT: Вы вошли с правами root",reply_markup=markup)
+    #выход их рут прав
+    elif(message.text=="Exit" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        markup.add(types.KeyboardButton("OK"))
+        bot.send_message(message.chat.id, text="Теперь вы обычный пользователь", reply_markup=markup)
+    #change questions
+    elif (message.text=="Change file with questions" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        btn=types.KeyboardButton("Questions.csv")
+        btn1=types.KeyboardButton("Questions1.csv")
+        btn2=types.KeyboardButton("Questions2.csv")
+        btn3=types.KeyboardButton("Questions3.csv")
+        btn4=types.KeyboardButton("Exit")
+        markup.add(btn,btn1,btn2,btn3,btn4)
+        bot.send_message(message.chat.id, text="ROOT: Выберите файл с вопросами", reply_markup=markup)
+
+    elif (message.text=="Questions.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=root_keyboard()
+        url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions.csv'
+        update_questions(url)
+        bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions.csv", reply_markup=markup)
+    elif (message.text=="Questions1.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=root_keyboard()
+        url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions1.csv'
+        update_questions(url)
+        bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions1.csv", reply_markup=markup)
+    elif (message.text=="Questions2.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=root_keyboard()
+        url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions2.csv'
+        update_questions(url)
+        bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions2.csv", reply_markup=markup)
+    elif (message.text=="Questions3.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        markup=root_keyboard()
+        url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions3.csv'
+        update_questions(url)
+        bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions3.csv", reply_markup=markup)
+    #end change questions
+    #clear user_is_passed.csv
+    elif (message.text=="Clear user_is_passed.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+        cldf=passed_df
+        cldf= cldf[0:0] 
+        cldf.to_csv(path_to_passed_user, index = False) 
+        update_passed_user()
+        bot.send_message(message.chat.id, text="ROOT: Файл user_is_passed.csv был успешно очищен. Теперь пользователи могут проходить тестирование повторно.",
+                          reply_markup=None)
+
+    #end root rights
+
+
+    else:
+        send_msg="Извините, я вас не понимаю 😔"
+        bot.send_message(message.chat.id, send_msg, reply_markup=None)
 
 def get_question_message(index_answer):
     keyboard=types.InlineKeyboardMarkup()
@@ -59,6 +131,18 @@ def get_question_message(index_answer):
            "keyboard": keyboard,
     }
 
+def check_passed(user_id):
+    text=""
+    update_passed_user();
+    for num, user_from_file in enumerate(passed_user["user_id"]):
+        if (user_from_file==user_id):
+            text="is_passed"
+            break;
+        else:
+            text="not_passed"
+    return{
+        text
+    }
 
 
 @bot.callback_query_handler(func=lambda query: query.data.startswith("?ans"))
@@ -67,6 +151,7 @@ def answered(query):
         bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
 						 reply_markup=None)
         questions["index_answer"]=0
+        passed_write_to_file(query.message.chat.id)
     else:
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.row(telebot.types.InlineKeyboardButton("Следующий вопрос", callback_data="?next"))
@@ -88,9 +173,21 @@ def next(query):
         bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
 						 reply_markup=None)
         questions["index_answer"]=0
+        passed_write_to_file(query.message.chat.id)
 
+#обновление файла user_is_passed.csv
+def passed_write_to_file(user_id):
+    mass={
+        "user_id": [user_id],
+        "is_passed": "is_passed"
+    }
+    df = pd.DataFrame(mass)
+    #df.to_csv('D:/nur_bot/who_are_you_without_your_bot/user_is_passed.csv', index = False) 
+    old_df = pd.read_csv(path_to_passed_user)
+    result=pd.concat([old_df,df])
+    result.to_csv(path_to_passed_user, index = False) 
 
-
+#запись статистики ответов
 def statistics_write(user_id, answer, index_answer, number_answer, username):
     data = datetime.datetime.today().strftime("%Y-%m-%d-%H-%M")
     statistics={'data': [data],
@@ -111,9 +208,27 @@ def statistics_write(user_id, answer, index_answer, number_answer, username):
     result=pd.concat([old_df,df])
     result.to_csv(path_to_statistic, index = False) 
 
-    """with open('data.csv', 'a', newline="", encoding='UTF-8') as fil:
-        wr = csv.writer(fil, delimiter=',')
-        wr.writerow([statistics["user_id"], statistics["question"], statistics["number_of_question"], statistics["answer"]])"""
+#обновление user_is_passed.csv
+def update_passed_user():
+    passed_df=pd.read_csv(path_to_passed_user)
+    passed_user["user_id"]=passed_df.user_id
+    passed_user["is_passed"]=passed_df.is_passed
+
+#обновление вопросов
+def update_questions(url):
+    table = pd.read_csv(url)
+    questions["question"]=table.question
+    questions["answer"]=[table.answer1, table.answer2, table.answer3, table.answer4]
+    questions["count"]=len(table.question)
+    questions["index_answer"]=0
+
+#клавиатура суперпользователя (админа)
+def root_keyboard():
+    markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(types.KeyboardButton("Change file with questions"))
+    markup.add(types.KeyboardButton("Clear user_is_passed.csv"))
+    markup.add(types.KeyboardButton("Exit"))
+    return markup
 
 
 bot.polling(non_stop=True)
