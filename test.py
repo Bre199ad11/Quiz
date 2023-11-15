@@ -106,12 +106,22 @@ def message(message):
         bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions3.csv", reply_markup=markup)
     #end change questions
     #clear user_is_passed.csv
-    elif (message.text=="Clear user_is_passed.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
+    elif (message.text=="Clear user_is_passed.csv and data.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
         cldf=passed_df
         cldf= cldf[0:0] 
-        cldf.to_csv(path_to_passed_user, index = False) 
+        cldf.to_csv(path_to_passed_user, index = False)
+        statistics={'data': [1],
+                'user_id': [1],
+                'username': [1],
+                'question': [1],
+                'number_of_question': [1],
+                'answer': [1],
+                'answer_index': 1}
+        cldf=pd.DataFrame(statistics)
+        cldf= cldf[0:0] 
+        cldf.to_csv(path_to_statistic, index = False)
         update_passed_user()
-        bot.send_message(message.chat.id, text="ROOT: Файл user_is_passed.csv был успешно очищен. Теперь пользователи могут проходить тестирование повторно.",
+        bot.send_message(message.chat.id, text="ROOT: Файл user_is_passed.csv и data.csv были успешно очищены. Теперь пользователи могут проходить тестирование повторно.",
                           reply_markup=None)
 
     #end root rights
@@ -214,6 +224,8 @@ def update_passed_user():
     passed_user["user_id"]=passed_df.user_id
     passed_user["is_passed"]=passed_df.is_passed
 
+
+
 #обновление вопросов
 def update_questions(url):
     table = pd.read_csv(url)
@@ -226,7 +238,7 @@ def update_questions(url):
 def root_keyboard():
     markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(types.KeyboardButton("Change file with questions"))
-    markup.add(types.KeyboardButton("Clear user_is_passed.csv"))
+    markup.add(types.KeyboardButton("Clear user_is_passed.csv and data.csv"))
     markup.add(types.KeyboardButton("Exit"))
     return markup
 
