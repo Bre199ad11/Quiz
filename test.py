@@ -29,7 +29,8 @@ questions = {
     "question": df.question,
     "answer": [df.answer1, df.answer2, df.answer3, df.answer4],
     "count": len(df.question),
-    "index_answer": 0
+    "index_answer": 0,
+    "name_of_file": 0
 }
 
 #mass whth info about passed user
@@ -88,14 +89,17 @@ def message(message):
         markup=root_keyboard()
         url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions.csv'
         update_questions(url)
+        questions["name_of_file"]=0
         bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions.csv", reply_markup=markup)
     elif (message.text=="Questions1.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
         markup=root_keyboard()
         url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions1.csv'
         update_questions(url)
+        questions["name_of_file"]=1
         bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions1.csv", reply_markup=markup)
     elif (message.text=="Questions2.csv" and (message.chat.id==644440906 or message.chat.id==den_id)):
         markup=root_keyboard()
+        questions["name_of_file"]=2
         url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions2.csv'
         update_questions(url)
         bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions2.csv", reply_markup=markup)
@@ -103,6 +107,7 @@ def message(message):
         markup=root_keyboard()
         url='https://raw.githubusercontent.com/Bre199ad11/Quiz/main/Questions3.csv'
         update_questions(url)
+        questions["name_of_file"]=3
         bot.send_message(message.chat.id, text="ROOT: Теперь используются вопросы из файла Questions3.csv", reply_markup=markup)
     #end change questions
     #clear user_is_passed.csv
@@ -116,7 +121,8 @@ def message(message):
                 'question': [1],
                 'number_of_question': [1],
                 'answer': [1],
-                'answer_index': 1}
+                'answer_index': 1,
+                'seria_index': 1}
         cldf=pd.DataFrame(statistics)
         cldf= cldf[0:0] 
         cldf.to_csv(path_to_statistic, index = False)
@@ -199,6 +205,7 @@ def passed_write_to_file(user_id):
 
 #запись статистики ответов
 def statistics_write(user_id, answer, index_answer, number_answer, username):
+
     data = datetime.datetime.today().strftime("%Y-%m-%d-%H-%M")
     statistics={'data': [data],
                 'user_id': [user_id],
@@ -206,7 +213,8 @@ def statistics_write(user_id, answer, index_answer, number_answer, username):
                 'question': [questions["question"][index_answer]],
                 'number_of_question': [index_answer],
                 'answer': [answer],
-                'answer_index': number_answer}
+                'answer_index': number_answer,
+                'seria_index': questions["name_of_file"]}
     
     df = pd.DataFrame(statistics)
 
@@ -241,6 +249,7 @@ def root_keyboard():
     markup.add(types.KeyboardButton("Clear user_is_passed.csv and data.csv"))
     markup.add(types.KeyboardButton("Exit"))
     return markup
+
 
 
 bot.polling(non_stop=True)
