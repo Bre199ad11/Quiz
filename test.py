@@ -3,6 +3,7 @@ from telebot import types # для указание типов
 
 import csv
 import datetime
+from datetime import datetime
 import os
 import pandas as pd
 import time
@@ -42,6 +43,8 @@ passed_user={
 #id Дениса
 den_id=123704982
 
+#время начала опроса
+last_time=datetime.now()
 
 @bot.message_handler(commands=["start"])
 def start(message):
@@ -57,6 +60,8 @@ def start(message):
 
 def message(message):
     if (message.text=="OK"):
+        global last_time
+        last_time=datetime.now()
         str=check_passed(message.chat.id)
         if (str=={'is_passed'}):
             bot.send_message(message.chat.id, text="Вы уже прошли этот опрос",reply_markup=None)
@@ -163,33 +168,50 @@ def check_passed(user_id):
 
 @bot.callback_query_handler(func=lambda query: query.data.startswith("?ans"))
 def answered(query):
-    if (questions["index_answer"]==questions["count"]):
-        bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
-						 reply_markup=None)
-        questions["index_answer"]=0
-        passed_write_to_file(query.message.chat.id)
+    data_now=datetime.now()
+    hour=abs(data_now.hour-last_time.hour)
+    diff=data_now.minute-last_time.minute
+    if (hour>=1): 
+        diff+=60
+    if (diff<10):
+        if (questions["index_answer"]==questions["count"]):
+            bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
+		    				 reply_markup=None)
+            questions["index_answer"]=0
+            passed_write_to_file(query.message.chat.id)
+        else:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.row(telebot.types.InlineKeyboardButton("Следующий вопрос", callback_data="?next"))
+            user_answer=questions["answer"][questions["index_answer"]][int(query.data.split("&")[1])]
+            number_user_answer=int(query.data.split("&")[1])
+            statistics_write(query.message.chat.id, user_answer, questions["index_answer"], number_user_answer, query.message.chat.username)
+            questions["index_answer"]+=1
+            bot.edit_message_text(text='Ответ записан ✅', chat_id=query.message.chat.id, message_id=query.message.id,
+                            reply_markup=keyboard)
     else:
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        keyboard.row(telebot.types.InlineKeyboardButton("Следующий вопрос", callback_data="?next"))
-        user_answer=questions["answer"][questions["index_answer"]][int(query.data.split("&")[1])]
-        number_user_answer=int(query.data.split("&")[1])
-        statistics_write(query.message.chat.id, user_answer, questions["index_answer"], number_user_answer, query.message.chat.username)
-        questions["index_answer"]+=1
-        bot.edit_message_text(text='Ответ записан ✅', chat_id=query.message.chat.id, message_id=query.message.id,
-						 reply_markup=keyboard)
-        
+        bot.edit_message_text(text='Превышено ожидание ответа.', chat_id=query.message.chat.id, message_id=query.message.id,
+			    			 reply_markup=None)
 
 
 @bot.callback_query_handler(func=lambda query: query.data == "?next")
 def next(query):
-    if (questions["index_answer"]!=questions["count"]):
-        post=get_question_message(questions["index_answer"])
-        bot.edit_message_text(post["text"], query.message.chat.id, query.message.id, reply_markup=post["keyboard"])
+    data_now=datetime.now()
+    hour=abs(data_now.hour-last_time.hour)
+    diff=data_now.minute-last_time.minute
+    if (hour>=1): 
+        diff+=60
+    if (diff<10):
+        if (questions["index_answer"]!=questions["count"]):
+            post=get_question_message(questions["index_answer"])
+            bot.edit_message_text(post["text"], query.message.chat.id, query.message.id, reply_markup=post["keyboard"])
+        else:
+            bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
+			    			 reply_markup=None)
+            questions["index_answer"]=0
+            passed_write_to_file(query.message.chat.id)
     else:
-        bot.edit_message_text(text='Спасибо за прохождение викторины 🙂', chat_id=query.message.chat.id, message_id=query.message.id,
-						 reply_markup=None)
-        questions["index_answer"]=0
-        passed_write_to_file(query.message.chat.id)
+        bot.edit_message_text(text='Превышено ожидание ответа.', chat_id=query.message.chat.id, message_id=query.message.id,
+			    			 reply_markup=None)
 
 #обновление файла user_is_passed.csv
 def passed_write_to_file(user_id):
@@ -206,7 +228,7 @@ def passed_write_to_file(user_id):
 #запись статистики ответов
 def statistics_write(user_id, answer, index_answer, number_answer, username):
 
-    data = datetime.datetime.today().strftime("%Y-%m-%d-%H-%M")
+    data = datetime.today().strftime("%Y-%m-%d-%H-%M")
     statistics={'data': [data],
                 'user_id': [user_id],
                 'username': [username],
